@@ -1,8 +1,8 @@
-from proxyManager import proxyManager as pm
+import multireq
 
-p = pm(use_proxy=False)
+mr = multireq.multiRequester(use_proxy=False)
 
-results = p.get_many([
+results = mr.get_many([
     "https://jsonplaceholder.typicode.com/todos/1",
     "https://jsonplaceholder.typicode.com/todos/2",
     "https://jsonplaceholder.typicode.com/todos/3",

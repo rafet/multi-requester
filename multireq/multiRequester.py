@@ -1,21 +1,55 @@
 import requests
-import urllib3
-import Proxy
 import random
-from useragentManager import useragentManager as um
 from concurrent.futures import ThreadPoolExecutor
 import threading
 import concurrent
 
 
+class useragentManager:
+    def __init__(self):
+        with open('multireq/useragents.txt', 'r') as f:
+            self.useragents = []
+            for row in f:
+                self.useragents.append(row)
+
+    def getRandomUseragent(self):
+        random_useragent = random.choice(self.useragents)
+        while not random_useragent:
+            random_useragent = random.choice(self.useragents)
+        useragent = random_useragent.replace('\n', '')
+
+    def getRandomHeaders(self):
+        headers = {
+            "Connection": "close",
+            'cache-control': 'max-age=0',
+            'upgrade-insecure-requests': '1',
+            'user-agent': self.getRandomUseragent()
+        }
+        return headers
+
+
+class Proxy:
+    def __init__(self, ip, port):
+        self.ip = ip
+        self.port = port
+        self.working = True
+        self.used = 0
+
+    def __str__(self):
+        return f"{self.ip}:{self.port}"
+
+    def setWorking(self, working):
+        self.working = working
+
+    def incUsed(self):
+        self.used += 1
+
+
 class proxyManager:
-    def __init__(self, use_proxy=True):
-        self.use_proxy = use_proxy
+    def __init__(self):
         self.proxies = []
         self.fetchProxiesFromAPI()
         self.proxies_copy = self.proxies.copy()
-        self.useragent_manager = um()
-        self.timeout = 1
 
     def fetchProxiesFromAPI(self):
         url = 'https://api.proxyscrape.com/?request=getproxies&proxytype=http&timeout=2000&ssl=yes'
@@ -23,7 +57,7 @@ class proxyManager:
         for i in data:
             if i:
                 x = i.split(':')
-                self.proxies.append(Proxy.Proxy(x[0], x[1]))
+                self.proxies.append(Proxy(x[0], x[1]))
 
     def proxyCount(self):
         return len(self.proxies)
@@ -40,13 +74,25 @@ class proxyManager:
             random_proxy = random.choice(self.proxies)
         return random_proxy
 
+
+class multiRequester:
+    def __init__(self, use_proxy=False, max_workers=100):
+        self.use_proxy = use_proxy
+        self.proxy_manager = proxyManager()
+        self.useragent_manager = useragentManager()
+        self.timeout = 3
+        self.max_workers = max_workers
+
     def get(self, url):
         while True:
             try:
                 headers = self.useragent_manager.getRandomHeaders()
                 if self.use_proxy:
-                    rand_proxy = self.getRandomProxy()
-                    proxies = {"http": str(rand_proxy), "https": str(rand_proxy)}
+                    rand_proxy = self.proxy_manager.getRandomProxy()
+                    proxies = {
+                        "http": str(rand_proxy),
+                        "https": str(rand_proxy)
+                    }
                     res = requests.get(url,
                                        timeout=self.timeout,
                                        proxies=proxies,
@@ -58,18 +104,14 @@ class proxyManager:
 
                 if res.status_code in [200, 404]:
                     return res
-            except:
+            except Exception as e:
                 pass
 
     def get_many(self, urls):
         tasks = []
-        obj = {}
-        results = []
-        executor = ThreadPoolExecutor(max_workers=100)
+        executor = ThreadPoolExecutor(max_workers=self.max_workers)
         for url in urls:
             future = executor.submit(self.get, url)
-            obj[future] = url
             tasks.append(future)
-
         for task in concurrent.futures.as_completed(tasks):
-            yield task.result(), obj[task]
+            yield task.result()

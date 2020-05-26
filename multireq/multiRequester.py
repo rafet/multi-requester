@@ -8,15 +8,10 @@ import concurrent
 class useragentManager:
     def __init__(self):
         with open('multireq/useragents.txt', 'r') as f:
-            self.useragents = []
-            for row in f:
-                self.useragents.append(row)
+            self.useragents = f.read().split('\n')
 
     def getRandomUseragent(self):
-        random_useragent = random.choice(self.useragents)
-        while not random_useragent:
-            random_useragent = random.choice(self.useragents)
-        useragent = random_useragent.replace('\n', '')
+        return random.choice(self.useragents)
 
     def getRandomHeaders(self):
         headers = {
@@ -63,6 +58,7 @@ class proxyManager:
         return len(self.proxies)
 
     def renewProxies(self, copy=True):
+        self.proxies = []
         if copy:
             self.proxies = self.proxies_copy.copy()
         else:
@@ -70,7 +66,7 @@ class proxyManager:
 
     def getRandomProxy(self):
         random_proxy = random.choice(self.proxies)
-        while not random_proxy:
+        while not random_proxy or random_proxy.working == False:
             random_proxy = random.choice(self.proxies)
         return random_proxy
 
@@ -105,7 +101,7 @@ class multiRequester:
                 if res.status_code in [200, 404]:
                     return res
             except Exception as e:
-                pass
+                rand_proxy.setWorking(False)
 
     def get_many(self, urls):
         tasks = []

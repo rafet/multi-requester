@@ -3,11 +3,14 @@ import random
 from concurrent.futures import ThreadPoolExecutor
 import threading
 import concurrent
+import os 
+
 
 
 class useragentManager:
     def __init__(self):
-        with open('multireq/useragents.txt', 'r') as f:
+        dir_path = os.path.dirname(os.path.realpath(__file__))
+        with open(f'{dir_path}/useragents.txt', 'r') as f:
             self.useragents = f.read().split('\n')
 
     def getRandomUseragent(self):

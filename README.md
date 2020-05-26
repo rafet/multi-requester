@@ -2,7 +2,7 @@
 `multireq` is a python package that helps you to send multiple requests simultaneously and secretly.
 
 ## Installation
-```
+``` python
 pip install multireq
 ```
 
